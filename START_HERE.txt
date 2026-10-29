@@ -1,0 +1,19 @@
+FURUGI SHOP LIVE v4.0 — SUPABASE + VERCEL
+===========================================
+
+1) Create a NEW Supabase project.
+2) Run: supabase/migrations/001_furugi_v4.sql in Supabase SQL Editor.
+3) Import this project to Vercel.
+4) Add Vercel Environment Variables:
+   SUPABASE_URL
+   SUPABASE_PUBLISHABLE_KEY
+   SUPABASE_SECRET_KEY
+   FURUGI_SETUP_TOKEN (long random value, temporary)
+   PUBLIC_URL
+5) Deploy / Redeploy.
+6) Open https://YOUR-DOMAIN/setup.html and create the first Admin.
+7) DELETE FURUGI_SETUP_TOKEN from Vercel and Redeploy.
+8) Configure Supabase Auth Site URL + Redirect URLs + Custom SMTP, then add real store/payment/product data in Admin.
+
+Full Thai guide: README.md
+Pre-launch checklist: GO_LIVE_CHECKLIST.md

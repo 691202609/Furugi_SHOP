@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Edit Product | Furugi Admin</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body data-admin-page="product-edit">
+<div class="admin-shell">
+  <aside class="admin-side">
+    <a class="admin-brand" href="admin-dashboard.html"><span>古</span><span>FURUGI ADMIN<small>STORE MANAGEMENT</small></span></a>
+    <nav class="admin-nav">
+      <a data-page="dashboard" href="admin-dashboard.html">▦ Dashboard</a>
+      <a data-page="products" href="admin-products.html">服 Products</a>
+      <a data-page="product-new" href="admin-product-new.html">＋ Add Product</a>
+      <a data-page="orders" href="admin-orders.html">注 Orders</a><a data-page="customers" href="admin-customers.html">人 Customers</a>
+      <a data-page="payments" href="admin-payments.html">¥ Payments</a>
+      <a data-page="messages" href="admin-messages.html">✉ Messages</a>
+      <a data-page="settings" href="admin-settings.html">⚙ Store Settings</a>
+      <a data-page="security" href="admin-security.html">鍵 Security</a>
+      <a data-page="backup" href="admin-backup.html">⇩ Backup</a>
+    </nav>
+    <div class="admin-side-bottom">
+      <a class="btn" style="width:100%" href="index.html" target="_blank">OPEN STORE ↗</a>
+      <button id="logoutBtn" class="btn btn-danger" style="width:100%;margin-top:8px">LOGOUT</button>
+    </div>
+  </aside>
+  <main class="admin-main">
+    <header class="admin-top">
+      <button id="adminMenu" class="btn mobile-admin-menu">☰</button>
+      <div><b>Furugi SHOP</b> <span class="muted">/ Admin</span></div>
+      <div class="muted">Signed in: <span id="adminName">Admin</span></div>
+    </header>
+    <div class="admin-content product-editor-page">
+      <div class="page-title">
+        <div><h1>Edit Product</h1><p>เพิ่มรายละเอียดและรูปสินค้าได้ในหน้าเดียว • รองรับลากวางและหลายรูป</p></div>
+        <div class="actions"><a class="btn" href="admin-products.html">← PRODUCTS</a><button class="btn btn-pink" form="productForm" type="submit">SAVE PRODUCT →</button></div>
+      </div>
+
+      <form id="productForm">
+        <div class="product-editor-grid">
+          <div>
+            <section class="panel editor-section">
+              <div class="section-heading"><div><span class="step-dot">01</span><h2>Product Information</h2></div><span class="muted">ข้อมูลที่ลูกค้าจะเห็น</span></div>
+              <div class="form-grid">
+                <div class="field"><label>SKU *</label><input name="sku" required placeholder="FG-0001"></div>
+                <div class="field"><label>Category *</label><select name="category"><option value="tees">T-Shirts</option><option value="tops">Tops</option><option value="outerwear">Outerwear</option><option value="bottoms">Bottoms</option><option value="accessories">Accessories</option></select></div>
+                <div class="field full"><label>Product Name *</label><input name="name" required placeholder="เช่น Tokyo Washed Graphic Tee"></div>
+                <div class="field"><label>Price (THB) *</label><input name="price" type="number" min="1" required placeholder="490"></div><div class="field"><label>จำนวนสินค้า / Stock *</label><input name="stock" type="number" min="0" max="9999" step="1" required value="1"><small class="muted">ใส่ 0 = SOLD OUT • ใส่ได้สูงสุด 9,999 ชิ้น</small></div>
+                <div class="field"><label>Tag</label><input name="tag" value="ONE OF ONE"></div>
+                <div class="field"><label>Size</label><input name="size" value="Free"></div>
+                <div class="field"><label>Condition</label><input name="condition" value="9/10"></div>
+                <div class="field"><label>Brand</label><input name="brand" value="No Brand"></div>
+                <div class="field"><label>Gender</label><select name="gender"><option>Unisex</option><option>Women</option><option>Men</option></select></div>
+                <div class="field full"><label>ขนาดวัดจริง</label><input name="measure" placeholder="อก 44” / ยาว 28” / ไหล่ 20”"></div>
+                <div class="field full"><label>คำอธิบายสั้น</label><textarea name="note" placeholder="สรุปจุดเด่นสินค้า 1–2 บรรทัด"></textarea></div>
+                <div class="field full"><label>รายละเอียด / ตำหนิ</label><textarea name="details" placeholder="แจ้งตำหนิ รอยใช้งาน สีซีด รอยด้าย ฯลฯ ให้ครบ"></textarea></div>
+                <label class="check"><input name="featured" type="checkbox"> Featured บนหน้าแรก</label>
+                <label class="check"><input name="sold" type="checkbox"> SOLD OUT / ปิดขาย</label>
+              </div>
+            </section>
+
+            <section class="panel editor-section">
+              <div class="section-heading"><div><span class="step-dot">02</span><h2>Product Photos</h2></div><span id="mediaCount" class="badge available">0 / 8 IMAGES</span></div>
+              <div class="notice">รูปแรกคือรูปปกสินค้า • รองรับ JPG / PNG / WebP • ระบบย่อและแปลงเป็น WebP ก่อนอัปโหลด • สูงสุด 8 รูปรวมรูปปก</div>
+
+              <div class="media-editor">
+                <div>
+                  <label class="media-label">MAIN PHOTO / รูปปก</label>
+                  <div id="mainDropzone" class="upload-dropzone upload-dropzone-main" tabindex="0" role="button" aria-label="อัปโหลดรูปหลัก">
+                    <img id="imagePreview" class="main-media-preview" src="assets/upload-placeholder.svg" alt="Product preview">
+                    <div class="dropzone-overlay"><b>ลากรูปมาวางที่นี่</b><span>หรือคลิกเพื่อเลือกรูปจากเครื่อง</span></div>
+                  </div>
+                  <input id="productImage" class="hidden-file-input" type="file" accept="image/jpeg,image/png,image/webp">
+                </div>
+                <div>
+                  <label class="media-label">GALLERY / รูปเพิ่มเติม</label>
+                  <div id="galleryDropzone" class="upload-dropzone upload-dropzone-gallery" tabindex="0" role="button" aria-label="อัปโหลดรูปเพิ่มเติม">
+                    <div class="gallery-drop-icon">＋</div><b>ลากหลายรูปมาวางได้พร้อมกัน</b><span>หรือคลิกเพื่อเลือกหลายรูป</span>
+                  </div>
+                  <input id="galleryImageInput" class="hidden-file-input" type="file" multiple accept="image/jpeg,image/png,image/webp">
+                </div>
+              </div>
+
+              <div class="url-image-row">
+                <div class="field"><label>เพิ่มรูปจาก URL</label><input id="imageUrlInput" type="url" placeholder="https://example.com/product.jpg"></div>
+                <button id="addImageUrl" class="btn" type="button">+ ADD URL</button>
+              </div>
+
+              <div class="gallery-toolbar"><div><b>จัดลำดับรูป</b><div class="muted">ลากการ์ดเพื่อสลับลำดับ • กด “ตั้งเป็นปก” เพื่อเปลี่ยนรูปหลัก</div></div><button id="clearGallery" class="btn btn-small" type="button">CLEAR GALLERY</button></div>
+              <div id="galleryGrid" class="admin-gallery-grid"></div>
+            </section>
+          </div>
+
+          <aside class="editor-preview-column">
+            <section class="panel editor-section sticky-editor-card">
+              <div class="section-heading"><div><span class="step-dot">03</span><h2>Live Preview</h2></div><span class="muted">ตัวอย่างหน้าร้าน</span></div>
+              <div id="liveProductPreview" class="live-product-card">
+                <div class="live-product-image"><img id="livePreviewImage" src="assets/upload-placeholder.svg" alt="preview"><span id="livePreviewTag">ONE OF ONE</span></div>
+                <div class="live-product-copy"><small>古着 / SELECTED SECOND-HAND</small><h3 id="livePreviewName">ชื่อสินค้า</h3><div class="live-product-meta"><span id="livePreviewSize">SIZE FREE</span><span id="livePreviewCondition">CONDITION 9/10</span></div><strong id="livePreviewPrice">฿0</strong></div>
+              </div>
+              <div class="publish-checklist">
+                <b>ก่อนกดขายจริง</b>
+                <label><input type="checkbox" disabled checked> กำหนดจำนวนสต็อกได้จากช่อง Stock ด้านบน</label>
+                <label><input type="checkbox" disabled checked> รูปถูกบันทึกไว้ในระบบร้าน</label>
+                <label><input type="checkbox" disabled> ตรวจขนาด / Condition / ตำหนิก่อนเผยแพร่</label>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <div id="saveStatus" class="save-status" hidden></div>
+        <div class="editor-savebar"><div><b>พร้อมบันทึกสินค้า?</b><span class="muted">ตรวจข้อมูลและรูป Preview ก่อน</span></div><div class="actions"><a class="btn" href="admin-products.html">CANCEL</a><button id="saveProductBtn" class="btn btn-pink" type="submit">SAVE PRODUCT →</button></div></div>
+      </form>
+    </div>
+  </main>
+</div>
+<div id="adminToast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="admin.js"></script>
+</body></html>

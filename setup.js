@@ -1,0 +1,6 @@
+'use strict';
+const state=document.getElementById('setupState'),form=document.getElementById('setupForm');
+function msg(t,ok=false){state.textContent=t;state.style.borderColor=ok?'#9de1b9':'#ffd58c'}
+async function request(url,opt={}){const r=await fetch(url,{...opt,headers:{'Content-Type':'application/json',...(opt.headers||{})}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||`Error ${r.status}`);return d}
+(async()=>{try{const s=await request('/api/setup/status');if(s.configured){msg('✓ ระบบมี Admin แล้ว — Setup ถูกปิดใช้งาน',true);return}if(!s.setupTokenConfigured){msg('ยังไม่ได้ตั้ง FURUGI_SETUP_TOKEN ใน Vercel Environment Variables');return}msg('พร้อมสร้าง Admin คนแรก');form.hidden=false}catch(e){msg(e.message)}})();
+form?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(form),btn=form.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='CREATING...';try{await request('/api/setup/admin',{method:'POST',body:JSON.stringify(Object.fromEntries(fd.entries()))});form.hidden=true;msg('✓ สร้าง Admin สำเร็จ กรุณาลบ FURUGI_SETUP_TOKEN ออกจาก Vercel แล้ว Redeploy จากนั้น Login',true)}catch(err){msg(err.message);btn.disabled=false;btn.textContent='CREATE FIRST ADMIN →'}});

@@ -1,0 +1,17 @@
+{
+  "name": "furugi-shop-v4-supabase-vercel",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Furugi SHOP production cloud edition using Supabase Auth/Postgres/Storage and Vercel Functions",
+  "scripts": {
+    "dev": "npx vercel dev",
+    "check": "node --check api/index.js && node --check app.js && node --check admin.js && node --check setup.js && node --check scripts/bootstrap-admin.js",
+    "bootstrap-admin": "node --env-file=.env.local scripts/bootstrap-admin.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.102.0"
+  }
+}

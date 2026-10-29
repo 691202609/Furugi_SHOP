@@ -1,0 +1,434 @@
+```html
+<!doctype html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#070607">
+
+    <meta
+        name="description"
+        content="Furugi SHOP ร้านเสื้อผ้ามือสองสไตล์ญี่ปุ่น Japanese vintage / streetwear / Y2K"
+    >
+
+    <title>Furugi SHOP | Japanese Vintage Store</title>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- ==================== ANNOUNCEMENT ==================== -->
+    <div id="announcement" class="announcement">
+        Furugi SHOP
+    </div>
+
+    <!-- ==================== HEADER ==================== -->
+    <header class="site-header">
+        <div class="container nav">
+
+            <!-- Brand -->
+            <a class="brand" href="index.html">
+                <span class="brand-seal">古</span>
+
+                <span>
+                    <span class="shop-name">FURUGI SHOP</span>
+                    <small class="shop-subtitle">
+                        古着 • JAPANESE VINTAGE STORE
+                    </small>
+                </span>
+            </a>
+
+            <!-- Navigation -->
+            <nav class="nav-links">
+                <a href="index.html">HOME</a>
+                <a href="shop.html">SHOP</a>
+                <a href="mixmatch.html">MIX & MATCH</a>
+                <a href="about.html">ABOUT</a>
+                <a href="contact.html">CONTACT</a>
+                <a href="track-order.html">TRACK</a>
+            </nav>
+
+            <!-- Navigation Actions -->
+            <div class="nav-actions">
+
+                <!-- Customer Account -->
+                <a
+                    class="icon-btn customer-account-link"
+                    href="customer-login.html"
+                    aria-label="เข้าสู่ระบบสมาชิก"
+                    title="สมาชิก"
+                >
+                    人
+                </a>
+
+                <!-- Track Order -->
+                <a
+                    class="icon-btn track-icon"
+                    href="track-order.html"
+                    aria-label="ติดตามออเดอร์"
+                >
+                    追
+                </a>
+
+                <!-- Cart -->
+                <a
+                    class="icon-btn"
+                    href="cart.html"
+                    aria-label="ตะกร้า"
+                >
+                    袋
+                    <span class="cart-badge">0</span>
+                </a>
+
+                <!-- Mobile Menu -->
+                <button
+                    id="menuBtn"
+                    class="menu-btn"
+                    type="button"
+                    aria-label="เมนู"
+                >
+                    ☰
+                </button>
+
+            </div>
+
+        </div>
+    </header>
+
+
+    <!-- ==================== MAIN ==================== -->
+    <main>
+
+        <!-- ==================== HERO ==================== -->
+        <section class="hero">
+
+            <div class="container hero-inner">
+
+                <div class="hero-copy">
+
+                    <div class="eyebrow">
+                        東京 SELECTED SECOND-HAND CLOTHING
+                    </div>
+
+                    <h1>
+                        FURUGI<span>SHOP</span>
+                    </h1>
+
+                    <p>
+                        ร้านเสื้อผ้ามือ 2 สไตล์ญี่ปุ่น —
+                        Japanese Vintage / Harajuku /
+                        Heisei Y2K / Streetwear
+                        ทุกชิ้นคัดสภาพและมีเพียงชิ้นเดียว
+                    </p>
+
+                    <!-- Hero Buttons -->
+                    <div class="hero-actions">
+
+                        <a
+                            class="btn btn-pink"
+                            href="shop.html"
+                        >
+                            SHOP NEW DROP →
+                        </a>
+                        <a
+                            class="btn btn-ghost"
+                            href="mixmatch.html"
+                        >
+                            MIX & MATCH
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== CATEGORY ==================== -->
+        <section class="section">
+            <div class="container">
+                <!-- Section Header -->
+                <div class="section-head">
+                    <div>
+                        <div class="eyebrow">
+                            CATEGORY / カテゴリー
+                        </div>
+                        <h2>
+                            FIND YOUR<br>
+                            FURUGI.
+                        </h2>
+                    </div>
+
+                    <p>
+                        เสื้อผ้าที่ไม่ต้องเหมือนใคร
+                        เลือกจากหมวดหลักแล้วจับมาแมตช์
+                        เป็นลุคของคุณเอง
+                    </p>
+                </div>
+
+                <!-- Category Grid -->
+                <div class="category-grid">
+                    <!-- Tops -->
+                    <a
+                        class="category-card"
+                        data-jp="上"
+                        href="shop.html?category=tops"
+                    >
+                        <div class="kicker">01</div>
+                        <h3>TOPS</h3>
+                        <p class="muted">
+                            Cami · Knit · Shirt
+                        </p>
+                    </a>
+                    <!-- T-Shirts -->
+                    <a
+                        class="category-card"
+                        data-jp="服"
+                        href="shop.html?category=tees"
+                    >
+                        <div class="kicker">02</div>
+                        <h3>T-SHIRTS</h3>
+                        <p class="muted">
+                            Graphic · Band · Washed
+                        </p>
+                    </a>
+                    <!-- Outerwear -->
+                    <a
+                        class="category-card"
+                        data-jp="外"
+                        href="shop.html?category=outerwear"
+                    >
+                        <div class="kicker">03</div>
+
+                        <h3>OUTERWEAR</h3>
+
+                        <p class="muted">
+                            Jacket · Hoodie · Track
+                        </p>
+                    </a>
+                    <!-- Bottoms -->
+                    <a
+                        class="category-card"
+                        data-jp="下"
+                        href="shop.html?category=bottoms"
+                    >
+                        <div class="kicker">04</div>
+
+                        <h3>BOTTOMS</h3>
+
+                        <p class="muted">
+                            Denim · Cargo · Skirt
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== FEATURED PRODUCTS ==================== -->
+        <section class="section">
+            <div class="container">
+                <!-- Section Header -->
+                <div class="section-head">
+                    <div>
+                        <div class="eyebrow">
+                            SELECTED / おすすめ
+                        </div>
+                        <h2>
+                            FEATURED DROP
+                        </h2>
+                    </div>
+                    <a
+                        class="btn btn-ghost"
+                        href="shop.html"
+                    >
+                        VIEW ALL →
+                    </a>
+                </div>
+                <!-- Products generated by JavaScript -->
+                <div
+                    id="featuredGrid"
+                    class="product-grid"
+                ></div>
+            </div>
+        </section>
+        <!-- ==================== LATEST PRODUCTS ==================== -->
+        <section class="section">
+            <div class="container">
+                <!-- Section Header -->
+                <div class="section-head">
+                    <div>
+                        <div class="eyebrow">
+                            NEW / 新着
+                        </div>
+                        <h2>
+                            LATEST FURUGI
+                        </h2>
+                    </div>
+                    <p>
+                        สินค้ามือ 2 ชิ้นเดียว
+                        หมดแล้วหมดเลย
+                    </p>
+
+                </div>
+
+
+                <!-- Products generated by JavaScript -->
+                <div
+                    id="newGrid"
+                    class="product-grid"
+                ></div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+
+        <div class="container">
+
+            <div class="footer-grid">
+
+                <!-- Footer Brand -->
+                <div>
+
+                    <a
+                        class="brand"
+                        href="index.html"
+                    >
+                        <span class="brand-seal">
+                            古
+                        </span>
+
+                        <span>
+                            <span class="shop-name">
+                                FURUGI SHOP
+                            </span>
+
+                            <small>
+                                SELECTED SECOND-HAND CLOTHING
+                            </small>
+                        </span>
+                    </a>
+
+                    <p class="muted">
+                        เสื้อผ้ามือ 2 คัดสภาพ
+                        แบบ One of One —
+                        หนึ่งชิ้น หนึ่งเรื่องราว
+                    </p>
+
+                </div>
+
+
+                <!-- Shop -->
+                <div>
+
+                    <h4>SHOP</h4>
+
+                    <a href="shop.html">
+                        New Drop
+                    </a>
+
+                    <a href="shop.html">
+                        T-Shirts
+                    </a>
+
+                    <a href="shop.html">
+                        Outerwear
+                    </a>
+
+                    <a href="shop.html">
+                        Bottoms
+                    </a>
+
+                </div>
+
+
+                <!-- Support -->
+                <div>
+
+                    <h4>SUPPORT</h4>
+
+                    <a href="track-order.html">
+                        ติดตามออเดอร์
+                    </a>
+
+                    <a href="shipping.html">
+                        การจัดส่ง
+                    </a>
+
+                    <a href="returns.html">
+                        การคืนสินค้า
+                    </a>
+
+                    <a href="contact.html">
+                        ติดต่อร้าน
+                    </a>
+
+                </div>
+
+
+                <!-- Legal -->
+                <div>
+
+                    <h4>LEGAL</h4>
+
+                    <a href="privacy.html">
+                        Privacy
+                    </a>
+
+                    <a href="terms.html">
+                        Terms
+                    </a>
+
+                    <a href="admin-login.html">
+                        Admin
+                    </a>
+
+                </div>
+
+            </div>
+
+
+            <!-- Copyright -->
+            <div class="copyright">
+
+                <span>
+                    © 2026 FURUGI SHOP · 古着
+                </span>
+
+                <span>
+                    LINE
+                    <span class="line-id">-</span>
+                    · IG
+                    <span class="instagram">-</span>
+                </span>
+
+            </div>
+
+        </div>
+
+    </footer>
+
+
+    <!-- ==================== TOAST ==================== -->
+    <div
+        id="toast"
+        class="toast"
+    ></div>
+
+
+    <!-- ==================== SCRIPTS ==================== -->
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Main JavaScript -->
+    <script src="app.js"></script>
+
+</body>
+
+</html>
+```
