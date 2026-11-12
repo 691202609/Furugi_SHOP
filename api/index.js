@@ -82,6 +82,15 @@ async function requireAdmin(req) {
   return { user, profile };
 }
 
+async function requireCustomer(req) {
+  const user = await currentUser(req, true);
+  const profile = await profileFor(user.id);
+  if (!profile || profile.role !== 'customer' || profile.status !== 'active') {
+    throw Object.assign(new Error('กรุณาเข้าสู่ระบบด้วยบัญชีสมาชิกที่ใช้งานได้'), { status: 403 });
+  }
+  return { user, profile };
+}
+
 function publicCustomer(profile, user) {
   return {
     id: user?.id || profile?.id,
@@ -270,16 +279,17 @@ async function route(req, res) {
   }
 
   if (p === '/api/settings/public' && m === 'GET') {
+    await requireCustomer(req);
     const j=settingsToJSON(await getSettings()); delete j.orderWebhookUrl; return send(res,200,j);
   }
 
   if (p === '/api/customer/me' && m === 'GET') {
     const user=await currentUser(req,false); if(!user)return send(res,200,{authenticated:false});
-    const profile=await profileFor(user.id); if(!profile||profile.status!=='active')return send(res,200,{authenticated:false});
+    const profile=await profileFor(user.id); if(!profile||profile.role!=='customer'||profile.status!=='active')return send(res,200,{authenticated:false});
     return send(res,200,{authenticated:true,customer:publicCustomer(profile,user)});
   }
   if (p === '/api/customer/profile' && m === 'PUT') {
-    const user=await currentUser(req,true), profile=await profileFor(user.id); if(!profile||profile.status!=='active')return send(res,403,{error:'บัญชีถูกปิดใช้งาน'});
+    const {user,profile}=await requireCustomer(req);
     const name=safeText(b.name,120),phone=safeText(b.phone,40),postcode=safeText(b.postcode,10);
     if(!name)return send(res,400,{error:'กรุณากรอกชื่อ'}); if(phone&&!validPhone(phone))return send(res,400,{error:'เบอร์โทรไม่ถูกต้อง'}); if(postcode&&!/^\d{5}$/.test(postcode))return send(res,400,{error:'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก'});
     const patch={full_name:name,phone,address_line:safeText(b.address,500),subdistrict:safeText(b.subdistrict,120),district:safeText(b.district,120),province:safeText(b.province,120),postcode,updated_at:new Date().toISOString()};
@@ -287,7 +297,7 @@ async function route(req, res) {
     return send(res,200,{ok:true,customer:publicCustomer(data,user)});
   }
   if (p === '/api/customer/change-password' && m === 'POST') {
-    const user=await currentUser(req,true), next=String(b.newPassword||'');
+    const {user}=await requireCustomer(req), next=String(b.newPassword||'');
     if(next.length<10||!/[A-Za-z]/.test(next)||!/[0-9]/.test(next))return send(res,400,{error:'รหัสผ่านใหม่ต้องอย่างน้อย 10 ตัว และมีตัวอักษรกับตัวเลข'});
     const {error:verifyErr}=await publicAuth.auth.signInWithPassword({email:user.email,password:String(b.currentPassword||'')});
     if(verifyErr)return send(res,400,{error:'รหัสผ่านปัจจุบันไม่ถูกต้อง'});
@@ -295,17 +305,18 @@ async function route(req, res) {
     return send(res,200,{ok:true});
   }
   if (p === '/api/customer/orders' && m === 'GET') {
-    const user=await currentUser(req,true); await expireOrders();
+    const {user}=await requireCustomer(req); await expireOrders();
     const {data,error}=await admin.from('orders').select('*,order_items(*)').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100); if(error)throw error;
     return send(res,200,(data||[]).map(publicOrder));
   }
   if (/^\/api\/customer\/orders\/[^/]+$/.test(p) && m==='GET') {
-    const user=await currentUser(req,true), id=decodeURIComponent(p.split('/').pop()).toUpperCase();
+    const {user}=await requireCustomer(req), id=decodeURIComponent(p.split('/').pop()).toUpperCase();
     const {data,error}=await admin.from('orders').select('*,order_items(*)').eq('id',id).eq('customer_id',user.id).maybeSingle(); if(error)throw error;
     return data?send(res,200,publicOrder(data)):send(res,404,{error:'ไม่พบออเดอร์ในบัญชีนี้'});
   }
 
   if (p === '/api/products' && m === 'GET') {
+    await requireCustomer(req);
     let q=admin.from('products').select('*').eq('hidden',false).order('sold',{ascending:true}).order('featured',{ascending:false}).order('id',{ascending:false});
     const category=safeText(req.query?.category,50); if(category&&category!=='all')q=q.eq('category',category);
     const {data,error}=await q; if(error)throw error;
@@ -314,12 +325,13 @@ async function route(req, res) {
     return send(res,200,rows.map(r=>productToJSON(r,false)));
   }
   if (/^\/api\/products\/\d+$/.test(p) && m==='GET') {
+    await requireCustomer(req);
     const id=Number(p.split('/').pop()); const {data,error}=await admin.from('products').select('*').eq('id',id).eq('hidden',false).maybeSingle(); if(error)throw error;
     return data?send(res,200,productToJSON(data,true)):send(res,404,{error:'ไม่พบสินค้า'});
   }
   if (p === '/api/contact' && m === 'POST') {
     const name=safeText(b.name,120),message=safeText(b.message,3000),email=safeText(b.email,180),phone=safeText(b.phone,40); if(!name||!message)return send(res,400,{error:'กรุณากรอกชื่อและข้อความ'}); if(!validEmail(email))return send(res,400,{error:'อีเมลไม่ถูกต้อง'});
-    const user=await currentUser(req,false); const {data,error}=await admin.from('contact_messages').insert({customer_id:user?.id||null,status:'new',name,email,phone,message}).select('id').single(); if(error)throw error;
+    const {user}=await requireCustomer(req); const {data,error}=await admin.from('contact_messages').insert({customer_id:user.id,status:'new',name,email,phone,message}).select('id').single(); if(error)throw error;
     return send(res,201,{id:Number(data.id),ok:true});
   }
   if (p === '/api/orders' && m === 'POST') {
@@ -328,17 +340,19 @@ async function route(req, res) {
     const items=[...map].map(([id,quantity])=>({id,quantity})); if(!items.length)return send(res,400,{error:'ตะกร้าว่าง'});
     const c=b.customer||{}; if(!safeText(c.name,120)||!validPhone(c.phone)||!safeText(c.address,500)||!safeText(c.district,120)||!safeText(c.province,120)||!/^\d{5}$/.test(safeText(c.postcode,10))) return send(res,400,{error:'กรุณากรอกชื่อ เบอร์โทร ที่อยู่ เขต/อำเภอ จังหวัด และรหัสไปรษณีย์ให้ครบ'});
     if(!validEmail(safeText(c.email,180)))return send(res,400,{error:'อีเมลไม่ถูกต้อง'});
-    const user=await currentUser(req,false), payment=['cod','promptpay','bank'].includes(b.payment)?b.payment:'cod';
-    const {data,error}=await admin.rpc('create_store_order',{p_customer_id:user?.id||null,p_customer:{name:safeText(c.name,120),phone:safeText(c.phone,40),email:safeText(c.email,180),address:safeText(c.address,500),subdistrict:safeText(c.subdistrict,120),district:safeText(c.district,120),province:safeText(c.province,120),postcode:safeText(c.postcode,10)},p_items:items,p_payment_method:payment,p_note:safeText(b.note,2000)});
+    const {user}=await requireCustomer(req), payment=['cod','promptpay','bank'].includes(b.payment)?b.payment:'cod';
+    const {data,error}=await admin.rpc('create_store_order',{p_customer_id:user.id,p_customer:{name:safeText(c.name,120),phone:safeText(c.phone,40),email:safeText(c.email,180),address:safeText(c.address,500),subdistrict:safeText(c.subdistrict,120),district:safeText(c.district,120),province:safeText(c.province,120),postcode:safeText(c.postcode,10)},p_items:items,p_payment_method:payment,p_note:safeText(b.note,2000)});
     if(error){const msg=String(error.message||''); if(msg.includes('OUT_OF_STOCK'))return send(res,409,{error:'มีสินค้าบางรายการหมดหรือจำนวนไม่พอ กรุณารีเฟรชตะกร้า'}); if(msg.includes('PAYMENT_DISABLED'))return send(res,400,{error:'ช่องทางชำระเงินนี้ปิดใช้งาน'}); return send(res,400,{error:'สร้างคำสั่งซื้อไม่สำเร็จ: '+msg});}
     const order=await fetchOrder(data.id); void postWebhook('order_created',publicOrder(order)); return send(res,201,publicOrder(order));
   }
   if (p === '/api/order-lookup' && m === 'POST') {
+    const {user}=await requireCustomer(req);
     await expireOrders(); const id=safeText(b.id,80).toUpperCase(), phone=digits(b.phone); if(!id||phone.length<9)return send(res,400,{error:'กรุณากรอกเลขออเดอร์และเบอร์โทร'});
-    const order=await fetchOrder(id); if(!order||digits(order.customer_phone)!==phone)return send(res,404,{error:'ไม่พบออเดอร์ หรือเบอร์โทรไม่ตรง'}); return send(res,200,publicOrder(order));
+    const order=await fetchOrder(id); if(!order||order.customer_id!==user.id||digits(order.customer_phone)!==phone)return send(res,404,{error:'ไม่พบออเดอร์ในบัญชีนี้ หรือเบอร์โทรไม่ตรง'}); return send(res,200,publicOrder(order));
   }
   if (/^\/api\/orders\/[^/]+\/payment-proof$/.test(p) && m==='POST') {
-    const parts=p.split('/'),id=decodeURIComponent(parts[3]).toUpperCase(),phone=digits(b.phone),order=await fetchOrder(id); if(!order||digits(order.customer_phone)!==phone)return send(res,404,{error:'ไม่พบออเดอร์ หรือเบอร์โทรไม่ตรง'});
+    const {user}=await requireCustomer(req);
+    const parts=p.split('/'),id=decodeURIComponent(parts[3]).toUpperCase(),phone=digits(b.phone),order=await fetchOrder(id); if(!order||order.customer_id!==user.id||digits(order.customer_phone)!==phone)return send(res,404,{error:'ไม่พบออเดอร์ในบัญชีนี้ หรือเบอร์โทรไม่ตรง'});
     if(order.payment_method==='cod')return send(res,400,{error:'ออเดอร์ COD ไม่ต้องอัปโหลดสลิป'}); if(order.payment_status==='paid')return send(res,409,{error:'ออเดอร์นี้ยืนยันการชำระแล้ว'}); if(order.status==='cancelled')return send(res,409,{error:'ออเดอร์นี้ถูกยกเลิกแล้ว'});
     const img=parseDataImage(b.proofImage,2*1024*1024),path=`orders/${id}/${Date.now()}-${crypto.randomUUID()}.${img.ext}`;
     const {error:upErr}=await admin.storage.from('payment-slips').upload(path,img.buf,{contentType:img.contentType,upsert:false}); if(upErr)throw upErr;
