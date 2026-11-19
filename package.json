@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "npx vercel dev",
     "check": "node --check api/index.js && node --check app.js && node --check admin.js && node --check setup.js && node --check scripts/bootstrap-admin.js",
-    "bootstrap-admin": "node --env-file=.env.local scripts/bootstrap-admin.js"
+    "bootstrap-admin": "node --env-file=.env.local scripts/bootstrap-admin.js",
+    "test": "node --test tests/*.test.js",
+    "verify": "npm run check && npm test"
   },
   "engines": {
     "node": "26.x"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.102.0"
+    "@supabase/supabase-js": "2.118.0"
   }
 }

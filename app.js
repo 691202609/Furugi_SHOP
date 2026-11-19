@@ -130,11 +130,11 @@ async function initSupabase() {
 
       auth: {
 
-        // Keep the customer session only for the current browser tab.
-        // This prevents an old Local Storage session from skipping Login
-        // when the storefront is opened again later.
+        // Persist across storefront pages and browser tabs, while keeping
+        // customer auth isolated from the Admin Supabase client.
         persistSession: true,
-        storage: window.sessionStorage,
+        storage: window.localStorage,
+        storageKey: "furugi-customer-auth-v1",
 
         autoRefreshToken: true,
 
@@ -539,7 +539,7 @@ function initCustomerChrome() {
 
     a.title = customerAccount.authenticated
 
-      ? `บัญชี ${customerAccount.customer?.name || ""}`
+      ? `โปรไฟล์ ${customerAccount.customer?.name || ""}`
 
       : "เข้าสู่ระบบสมาชิก";
 

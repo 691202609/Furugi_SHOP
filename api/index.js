@@ -114,6 +114,7 @@ function settingsToJSON(r) {
     shippingFee: Number(r.shipping_fee || 0),
     freeShippingAt: Number(r.free_shipping_at || 0),
     reserveMinutes: Number(r.reserve_minutes || 1440),
+    codReserveMinutes: Number(r.cod_reserve_minutes || 2880),
     enableCOD: !!r.enable_cod,
     enablePromptPay: !!r.enable_promptpay,
     enableBank: !!r.enable_bank,
@@ -239,7 +240,29 @@ async function postWebhook(event, order) {
 }
 
 async function expireOrders() {
-  try { await admin.rpc('expire_unpaid_orders'); } catch (e) { console.warn('expire orders:', e.message); }
+  try {
+    const { error } = await admin.rpc('expire_unpaid_orders');
+    if (error) console.warn('expire orders:', error.message);
+  } catch (e) { console.warn('expire orders:', e.message); }
+}
+
+function requestIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || String(req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown');
+}
+
+function rateKey(scope, value) {
+  return crypto.createHash('sha256').update(`furugi-${scope}|${String(value || '')}`).digest('hex');
+}
+
+async function consumeActionLimit(key, limit, windowSeconds) {
+  const { data, error } = await admin.rpc('consume_customer_action_attempt', {
+    p_key: key,
+    p_limit: limit,
+    p_window_seconds: windowSeconds
+  });
+  if (error) throw Object.assign(new Error('ระบบป้องกันการทำรายการยังตั้งค่าไม่ครบ'), { status: 503 });
+  return data !== false;
 }
 
 function secureEqual(a,b) {
@@ -253,8 +276,16 @@ async function route(req, res) {
 
   if (p === '/api/config' && m === 'GET') return send(res,200,{supabaseUrl:SUPABASE_URL,publishableKey:PUBLISHABLE_KEY});
   if (p === '/api/health' && m === 'GET') {
-    const { error } = await admin.from('store_settings').select('id').eq('id',1).single();
-    return send(res,error?503:200,{ok:!error,cloud:'supabase',runtime:'vercel',time:new Date().toISOString(),error:error?.message});
+    const { data, error } = await admin.rpc('furugi_system_health');
+    const ok = !error && data?.ok === true;
+    return send(res, ok ? 200 : 503, {
+      ok,
+      cloud:'supabase',
+      runtime:'vercel',
+      time:new Date().toISOString(),
+      checks:data?.checks || {},
+      error:error?.message || (ok ? undefined : 'SYSTEM_HEALTH_CHECK_FAILED')
+    });
   }
 
   // One-time admin bootstrap. Disabled forever once an admin exists.
@@ -301,8 +332,7 @@ async function route(req, res) {
     // migration/RPC is missing so the public register endpoint is never left
     // without abuse protection.
     try {
-      const forwarded=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
-      const ip=forwarded||String(req.headers['x-real-ip']||req.socket?.remoteAddress||'unknown');
+      const ip=requestIp(req);
       const ipKey=crypto.createHash('sha256').update(`furugi-signup-ip|${ip}`).digest('hex');
       const emailKey=crypto.createHash('sha256').update(`furugi-signup-email|${email}`).digest('hex');
       const [ipLimit,emailLimit]=await Promise.all([
@@ -392,6 +422,7 @@ async function route(req, res) {
 
   if (p === '/api/products' && m === 'GET') {
     await requireCustomer(req);
+    await expireOrders();
     let q=admin.from('products').select('*').eq('hidden',false).order('sold',{ascending:true}).order('featured',{ascending:false}).order('id',{ascending:false});
     const category=safeText(req.query?.category,50); if(category&&category!=='all')q=q.eq('category',category);
     const {data,error}=await q; if(error)throw error;
@@ -401,6 +432,7 @@ async function route(req, res) {
   }
   if (/^\/api\/products\/\d+$/.test(p) && m==='GET') {
     await requireCustomer(req);
+    await expireOrders();
     const id=Number(p.split('/').pop()); const {data,error}=await admin.from('products').select('*').eq('id',id).eq('hidden',false).maybeSingle(); if(error)throw error;
     return data?send(res,200,productToJSON(data,true)):send(res,404,{error:'ไม่พบสินค้า'});
   }
@@ -416,6 +448,24 @@ async function route(req, res) {
     const c=b.customer||{}; if(!safeText(c.name,120)||!validPhone(c.phone)||!safeText(c.address,500)||!safeText(c.district,120)||!safeText(c.province,120)||!/^\d{5}$/.test(safeText(c.postcode,10))) return send(res,400,{error:'กรุณากรอกชื่อ เบอร์โทร ที่อยู่ เขต/อำเภอ จังหวัด และรหัสไปรษณีย์ให้ครบ'});
     if(!validEmail(safeText(c.email,180)))return send(res,400,{error:'อีเมลไม่ถูกต้อง'});
     const {user}=await requireCustomer(req), payment=['cod','promptpay','bank'].includes(b.payment)?b.payment:'cod';
+
+    // Production order-abuse protection: throttle both the authenticated user
+    // and source IP before any stock is reserved.
+    const [userAllowed, ipAllowed] = await Promise.all([
+      consumeActionLimit(rateKey('order-user', user.id), 8, 600),
+      consumeActionLimit(rateKey('order-ip', requestIp(req)), 30, 3600)
+    ]);
+    if(!userAllowed || !ipAllowed) return send(res,429,{error:'ทำรายการสั่งซื้อถี่เกินไป กรุณารอสักครู่แล้วลองใหม่'});
+
+    // A customer may have at most 2 unconfirmed COD orders at a time. This
+    // prevents free accounts from reserving the whole store with fake CODs.
+    if(payment==='cod'){
+      const {count,error:codErr}=await admin.from('orders').select('id',{count:'exact',head:true})
+        .eq('customer_id',user.id).eq('payment_method','cod').eq('status','pending').eq('restocked',false);
+      if(codErr) throw codErr;
+      if(Number(count||0)>=2) return send(res,429,{error:'คุณมีออเดอร์ COD ที่รอยืนยันครบ 2 รายการแล้ว กรุณารอร้านยืนยันหรือยกเลิกรายการเดิมก่อน'});
+    }
+
     const {data,error}=await admin.rpc('create_store_order',{p_customer_id:user.id,p_customer:{name:safeText(c.name,120),phone:safeText(c.phone,40),email:safeText(c.email,180),address:safeText(c.address,500),subdistrict:safeText(c.subdistrict,120),district:safeText(c.district,120),province:safeText(c.province,120),postcode:safeText(c.postcode,10)},p_items:items,p_payment_method:payment,p_note:safeText(b.note,2000)});
     if(error){const msg=String(error.message||''); if(msg.includes('OUT_OF_STOCK'))return send(res,409,{error:'มีสินค้าบางรายการหมดหรือจำนวนไม่พอ กรุณารีเฟรชตะกร้า'}); if(msg.includes('PAYMENT_DISABLED'))return send(res,400,{error:'ช่องทางชำระเงินนี้ปิดใช้งาน'}); return send(res,400,{error:'สร้างคำสั่งซื้อไม่สำเร็จ: '+msg});}
     const order=await fetchOrder(data.id); void postWebhook('order_created',publicOrder(order)); return send(res,201,publicOrder(order));
@@ -489,14 +539,14 @@ async function route(req, res) {
       const next=await fetchOrder(id);void postWebhook('order_updated',publicOrder(next));return send(res,200,orderToJSON(next));
     }
     if (p === '/api/admin/customers' && m==='GET') {
-      const {data:profiles,error}=await admin.from('profiles').select('id,email,full_name,phone,province,created_at,updated_at').eq('role','customer').order('created_at',{ascending:false});if(error)throw error;const {data:orders,error:oe}=await admin.from('orders').select('customer_id,total,status');if(oe)throw oe;const agg=new Map();for(const o of orders||[]){if(!o.customer_id)continue;const a=agg.get(o.customer_id)||{count:0,total:0};a.count++;if(o.status!=='cancelled')a.total+=Number(o.total||0);agg.set(o.customer_id,a);}return send(res,200,(profiles||[]).map(x=>({id:x.id,email:x.email,name:x.full_name,phone:x.phone,province:x.province,created_at:x.created_at,updated_at:x.updated_at,order_count:agg.get(x.id)?.count||0,total_spent:agg.get(x.id)?.total||0})));
+      const {data:profiles,error}=await admin.from('profiles').select('id,email,full_name,phone,province,created_at,updated_at').eq('role','customer').order('created_at',{ascending:false});if(error)throw error;const {data:orders,error:oe}=await admin.from('orders').select('customer_id,total,status,payment_method,payment_status');if(oe)throw oe;const agg=new Map();for(const o of orders||[]){if(!o.customer_id)continue;const a=agg.get(o.customer_id)||{count:0,total:0};a.count++;if(o.payment_status==='paid'||(o.payment_method==='cod'&&o.status==='completed'))a.total+=Number(o.total||0);agg.set(o.customer_id,a);}return send(res,200,(profiles||[]).map(x=>({id:x.id,email:x.email,name:x.full_name,phone:x.phone,province:x.province,created_at:x.created_at,updated_at:x.updated_at,order_count:agg.get(x.id)?.count||0,total_spent:agg.get(x.id)?.total||0})));
     }
     if (p === '/api/admin/messages' && m==='GET') {const {data,error}=await admin.from('contact_messages').select('*').order('created_at',{ascending:false});if(error)throw error;return send(res,200,data||[]);}
     if (/^\/api\/admin\/messages\/\d+$/.test(p) && m==='PUT') {const id=Number(p.split('/').pop()),status=['new','read','closed'].includes(b.status)?b.status:'read';const {error}=await admin.from('contact_messages').update({status}).eq('id',id);if(error)throw error;return send(res,200,{ok:true});}
     if (/^\/api\/admin\/messages\/\d+$/.test(p) && m==='DELETE') {const id=Number(p.split('/').pop());const {error}=await admin.from('contact_messages').delete().eq('id',id);if(error)throw error;return send(res,200,{ok:true});}
     if (p === '/api/admin/settings' && m==='GET') return send(res,200,settingsToJSON(await getSettings()));
     if (p === '/api/admin/settings' && m==='PUT') {
-      const patch={updated_at:new Date().toISOString()}, map={shopName:'shop_name',shopSubtitle:'shop_subtitle',announcement:'announcement',promptPayId:'promptpay_id',bankName:'bank_name',bankAccountName:'bank_account_name',bankAccountNumber:'bank_account_number',contactPhone:'contact_phone',contactEmail:'contact_email',lineId:'line_id',instagram:'instagram',shopAddress:'shop_address',shippingText:'shipping_text',returnText:'return_text',privacyText:'privacy_text',termsText:'terms_text',orderWebhookUrl:'order_webhook_url'};for(const[k,col]of Object.entries(map))if(k in b)patch[col]=safeText(b[k],k.endsWith('Text')?6000:2000);if('shippingFee'in b)patch.shipping_fee=clampInt(b.shippingFee,0,1000000);if('freeShippingAt'in b)patch.free_shipping_at=clampInt(b.freeShippingAt,0,10000000);if('reserveMinutes'in b)patch.reserve_minutes=Math.max(30,clampInt(b.reserveMinutes,30,100000));if('enableCOD'in b)patch.enable_cod=toBool(b.enableCOD);if('enablePromptPay'in b)patch.enable_promptpay=toBool(b.enablePromptPay);if('enableBank'in b)patch.enable_bank=toBool(b.enableBank);const {data,error}=await admin.from('store_settings').update(patch).eq('id',1).select('*').single();if(error)throw error;return send(res,200,settingsToJSON(data));
+      const patch={updated_at:new Date().toISOString()}, map={shopName:'shop_name',shopSubtitle:'shop_subtitle',announcement:'announcement',promptPayId:'promptpay_id',bankName:'bank_name',bankAccountName:'bank_account_name',bankAccountNumber:'bank_account_number',contactPhone:'contact_phone',contactEmail:'contact_email',lineId:'line_id',instagram:'instagram',shopAddress:'shop_address',shippingText:'shipping_text',returnText:'return_text',privacyText:'privacy_text',termsText:'terms_text',orderWebhookUrl:'order_webhook_url'};for(const[k,col]of Object.entries(map))if(k in b)patch[col]=safeText(b[k],k.endsWith('Text')?6000:2000);if('shippingFee'in b)patch.shipping_fee=clampInt(b.shippingFee,0,1000000);if('freeShippingAt'in b)patch.free_shipping_at=clampInt(b.freeShippingAt,0,10000000);if('reserveMinutes'in b)patch.reserve_minutes=Math.max(30,clampInt(b.reserveMinutes,30,100000));if('codReserveMinutes'in b)patch.cod_reserve_minutes=Math.max(60,clampInt(b.codReserveMinutes,60,100000));if('enableCOD'in b)patch.enable_cod=toBool(b.enableCOD);if('enablePromptPay'in b)patch.enable_promptpay=toBool(b.enablePromptPay);if('enableBank'in b)patch.enable_bank=toBool(b.enableBank);const {data,error}=await admin.from('store_settings').update(patch).eq('id',1).select('*').single();if(error)throw error;return send(res,200,settingsToJSON(data));
     }
     if (p === '/api/admin/change-password' && m==='POST') {
       const next=String(b.newPassword||'');if(next.length<12||!/[A-Za-z]/.test(next)||!/[0-9]/.test(next))return send(res,400,{error:'รหัสผ่านใหม่ต้องอย่างน้อย 12 ตัว และมีตัวอักษรกับตัวเลข'});const {error:verifyErr}=await publicAuth.auth.signInWithPassword({email:user.email,password:String(b.currentPassword||'')});if(verifyErr)return send(res,400,{error:'รหัสผ่านปัจจุบันไม่ถูกต้อง'});const {error}=await admin.auth.admin.updateUserById(user.id,{password:next});if(error)throw error;return send(res,200,{ok:true});

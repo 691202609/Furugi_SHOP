@@ -1,0 +1,13 @@
+.git/
+.github/
+.env
+.env.*
+!.env.example
+supabase/
+tests/
+scripts/
+*.md
+*.txt
+*.zip
+
+*.sql

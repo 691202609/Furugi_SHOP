@@ -1,0 +1,20 @@
+FURUGI SHOP — FINAL DEPLOY
+
+1) Supabase SQL Editor
+   เปิด RUN_THIS_IN_SUPABASE.sql → Ctrl+A → Ctrl+C → Paste → Run
+
+2) เอาไฟล์ทั้งหมดใน ZIP ไปแทนโปรเจกต์เดิม
+
+3) Push GitHub
+   git add .
+   git commit -m "production hardening and system fixes"
+   git pull --rebase origin main
+   git push origin main
+
+4) รอ Vercel Deploy สำเร็จ
+
+5) เปิด
+   https://furugishop.vercel.app/api/health
+   ต้องได้ ok: true
+
+6) Logout/Login ใหม่ 1 ครั้งเพื่อย้ายไปใช้ Auth storage key ใหม่

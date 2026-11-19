@@ -2,3 +2,14 @@ User-agent: *
 Disallow: /admin-
 Disallow: /setup.html
 Disallow: /api/
+Disallow: /customer-login.html
+Disallow: /customer-register.html
+Disallow: /forgot-password.html
+Disallow: /reset-password.html
+Disallow: /account.html
+Disallow: /cart.html
+Disallow: /checkout.html
+Disallow: /payment.html
+Disallow: /order-success.html
+Disallow: /track-order.html
+Sitemap: https://furugishop.vercel.app/sitemap.xml

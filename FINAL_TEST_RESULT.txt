@@ -1,0 +1,21 @@
+FURUGI SHOP FINAL TEST RESULT
+
+PASS: npm run check
+PASS: automated tests 9/9
+PASS: package.json/package-lock.json/vercel.json parse
+PASS: no duplicate HTML IDs
+PASS: no missing local HTML href/src
+PASS: no detected secret-like production keys in project files
+PASS: customer/admin auth storage isolated
+PASS: multi-tab customer session configuration
+PASS: order/IP/user throttling present
+PASS: COD pending cap present
+PASS: expired order stock release on catalog reads
+PASS: accurate customer total-spent logic
+PASS: full health RPC/API contract present
+PASS: Supabase CDN pinned
+PASS: hero WebP optimized (~203 KB)
+PASS: .vercelignore hardening
+PASS: CI workflow added
+
+NOTE: Run RUN_THIS_IN_SUPABASE.sql on the existing Supabase project before expecting the new /api/health and order hardening to work.
