@@ -1,0 +1,30 @@
+FURUGI SHOP - PRODUCTION PRE-FLIGHT REPORT
+Date: 2026-11-18
+
+PASS
+- app.js syntax
+- api/index.js syntax
+- admin.js syntax
+- setup.js syntax
+- scripts/bootstrap-admin.js syntax
+- vercel.json valid JSON
+- package.json valid JSON
+- Customer session uses sessionStorage
+- Root sends visitor to customer login
+- Customer registration uses /api/customer/register
+- Registration backend creates Supabase user with email_confirm:true
+- No email verification is sent during registration
+- Signup abuse protection RPC is required (fail closed)
+- Products/settings/orders/order lookup/payment proof require customer authentication
+- Order ownership is checked for lookup/payment proof
+- READY_TO_OPEN.sql contains profiles/products/orders/order RPC/expiry/signup limiter
+- No real Supabase secret/JWT detected in package
+
+MANUAL EXTERNAL CHECKS REQUIRED BEFORE GO-LIVE
+1. Run supabase/READY_TO_OPEN.sql in the correct Supabase project.
+2. Set Vercel env: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY, FURUGI_SETUP_TOKEN.
+3. Deploy and confirm /api/health returns ok:true.
+4. Create the first admin via /setup.html, then delete FURUGI_SETUP_TOKEN from Vercel and redeploy.
+5. Recommended: Supabase Authentication -> disable direct public signups, because Furugi registration is handled by the trusted backend Admin API.
+6. Test a brand-new customer: Register -> Home -> Logout -> Login -> Cart -> Checkout -> Track order.
+7. Forgot Password still uses recovery email; configure Custom SMTP before relying on it at production volume.

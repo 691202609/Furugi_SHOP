@@ -130,7 +130,11 @@ async function initSupabase() {
 
       auth: {
 
+        // Keep the customer session only for the current browser tab.
+        // This prevents an old Local Storage session from skipping Login
+        // when the storefront is opened again later.
         persistSession: true,
+        storage: window.sessionStorage,
 
         autoRefreshToken: true,
 
@@ -517,45 +521,6 @@ function requireCustomerLogin() {
 }
 
 
-async function forceFreshCustomerLogin() {
-
-  const page = currentCustomerPage();
-
-  const params = new URLSearchParams(location.search);
-
-  // Only force logout when the user entered through the site's root redirect.
-  if (page !== "customer-login.html" || params.get("force") !== "1") return;
-
-  try {
-
-    // Sign out only this browser session, not every device.
-    await supabaseClient.auth.signOut({ scope: "local" });
-
-  } catch (err) {
-
-    console.warn("Force customer logout failed:", err);
-
-  }
-
-  customerAccount = { authenticated: false };
-
-  // Remove force=1 so refreshing Login does not keep signing out repeatedly.
-  params.delete("force");
-
-  const query = params.toString();
-
-  history.replaceState(
-
-    {},
-
-    "",
-
-    `customer-login.html${query ? `?${query}` : ""}`,
-
-  );
-
-}
-
 function customerApi(url, opt = {}) {
 
   return authedApi(url, opt);
@@ -662,12 +627,6 @@ function initCustomerLogin() {
 
   }
 
-  if (new URLSearchParams(location.search).get("verified")) {
-
-    setTimeout(() => toast("ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ"), 100);
-
-  }
-
   form.addEventListener("submit", async (e) => {
 
     e.preventDefault();
@@ -754,6 +713,8 @@ function initCustomerRegister() {
 
     const phone = String(fd.get("phone") || "").trim();
 
+    if (!name) return toast("กรุณากรอกชื่อ");
+
     if (password !== confirmPassword) {
 
       return toast("ยืนยันรหัสผ่านไม่ตรงกัน");
@@ -782,47 +743,32 @@ function initCustomerRegister() {
 
     try {
 
-      const { data, error } = await supabaseClient.auth.signUp({
+      // Registration is handled by our own backend. It creates the Supabase
+      // Auth user as already confirmed, so NO confirmation email is sent.
+      await api("/api/customer/register", {
+
+        method: "POST",
+
+        body: JSON.stringify({ email, password, name, phone }),
+
+      });
+
+      // Sign in immediately on the website after registration.
+      const { error } = await supabaseClient.auth.signInWithPassword({
 
         email,
 
         password,
 
-        options: {
-
-          data: {
-
-            full_name: name,
-
-            phone,
-
-          },
-
-        },
-
       });
 
       if (error) throw error;
-
-      if (!data?.session) {
-
-        throw new Error(
-
-          "Supabase ยังเปิด Confirm email อยู่ กรุณาปิด Confirm email ที่ Authentication > Sign In / Providers > Email",
-
-        );
-
-      }
 
       await loadCustomerAccount();
 
       if (!customerAccount.authenticated) {
 
-        throw new Error(
-
-          "สร้างบัญชีสำเร็จ แต่โหลดข้อมูลสมาชิกไม่สำเร็จ กรุณาลองเข้าสู่ระบบอีกครั้ง",
-
-        );
+        throw new Error("สร้างบัญชีสำเร็จ แต่เข้าสู่ระบบอัตโนมัติไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง");
 
       }
 
@@ -1897,10 +1843,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
 
   }
-
-  // If the user entered from the site root, require a fresh login first.
-
-  await forceFreshCustomerLogin();
 
   // Check Supabase session before loading any customer-only page data.
 

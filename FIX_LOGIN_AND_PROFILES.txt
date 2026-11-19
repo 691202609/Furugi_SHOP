@@ -1,0 +1,15 @@
+Furugi SHOP — Login/Profile fixes
+
+1) Login is forced when entering the root URL.
+2) Supabase customer session is stored in sessionStorage (current tab only).
+3) Old Supabase auth tokens are cleared on forced root login.
+4) Registration remains no-email-confirmation flow (Confirm email must be OFF in Supabase).
+5) If Supabase reports missing public.profiles, run:
+   supabase/migrations/002_auth_profiles_repair.sql
+   in Supabase > SQL Editor.
+
+Deploy:
+  git add app.js vercel.json supabase/migrations/002_auth_profiles_repair.sql
+  git commit -m "fix customer login and profiles"
+  git pull --rebase origin main
+  git push origin main

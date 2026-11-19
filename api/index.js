@@ -283,6 +283,81 @@ async function route(req, res) {
     const j=settingsToJSON(await getSettings()); delete j.orderWebhookUrl; return send(res,200,j);
   }
 
+  // Customer registration without email verification.
+  // The Secret Key is used only on the server to create an already-confirmed
+  // customer account. No confirmation email is sent.
+  if (p === '/api/customer/register' && m === 'POST') {
+    const email=safeText(b.email,180).toLowerCase();
+    const password=String(b.password||'');
+    const name=safeText(b.name,120);
+    const phone=safeText(b.phone,40);
+
+    if(!name)return send(res,400,{error:'กรุณากรอกชื่อ'});
+    if(!email||!validEmail(email))return send(res,400,{error:'อีเมลไม่ถูกต้อง'});
+    if(phone&&!validPhone(phone))return send(res,400,{error:'เบอร์โทรไม่ถูกต้อง'});
+    if(password.length<10||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))return send(res,400,{error:'รหัสผ่านต้องอย่างน้อย 10 ตัว และมีตัวอักษรกับตัวเลข'});
+
+    // Production signup throttling. Registration fails closed when the
+    // migration/RPC is missing so the public register endpoint is never left
+    // without abuse protection.
+    try {
+      const forwarded=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
+      const ip=forwarded||String(req.headers['x-real-ip']||req.socket?.remoteAddress||'unknown');
+      const ipKey=crypto.createHash('sha256').update(`furugi-signup-ip|${ip}`).digest('hex');
+      const emailKey=crypto.createHash('sha256').update(`furugi-signup-email|${email}`).digest('hex');
+      const [ipLimit,emailLimit]=await Promise.all([
+        admin.rpc('consume_customer_signup_attempt',{p_key:ipKey,p_limit:20,p_window_seconds:3600}),
+        admin.rpc('consume_customer_signup_attempt',{p_key:emailKey,p_limit:5,p_window_seconds:3600})
+      ]);
+      if(ipLimit.error||emailLimit.error){
+        console.error('signup rate limit unavailable:',ipLimit.error?.message||emailLimit.error?.message);
+        return send(res,503,{error:'ระบบสมัครสมาชิกยังตั้งค่าไม่ครบ กรุณาติดต่อร้าน'});
+      }
+      if(ipLimit.data===false||emailLimit.data===false){
+        return send(res,429,{error:'สมัครสมาชิกหลายครั้งเกินไป กรุณาลองใหม่ภายหลัง'});
+      }
+    } catch(e) {
+      console.error('signup rate limit check failed:',e.message);
+      return send(res,503,{error:'ระบบสมัครสมาชิกไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง'});
+    }
+
+    const {data,error}=await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm:true,
+      user_metadata:{full_name:name,phone}
+    });
+
+    if(error){
+      const msg=String(error.message||'');
+      if(/already|registered|exists/i.test(msg))return send(res,409,{error:'อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ'});
+      return send(res,400,{error:msg||'สร้างบัญชีไม่สำเร็จ'});
+    }
+
+    const user=data?.user;
+    if(!user?.id)return send(res,500,{error:'สร้างบัญชีไม่สำเร็จ'});
+
+    const {error:profileErr}=await admin.from('profiles').upsert({
+      id:user.id,
+      email,
+      full_name:name,
+      phone,
+      role:'customer',
+      status:'active',
+      updated_at:new Date().toISOString()
+    },{onConflict:'id'});
+
+    if(profileErr){
+      // Do not leave an unusable Auth account behind if the profile schema
+      // has not been installed correctly.
+      try { await admin.auth.admin.deleteUser(user.id); } catch {}
+      console.error('customer profile create failed:',profileErr);
+      return send(res,500,{error:'สร้างข้อมูลสมาชิกไม่สำเร็จ กรุณาตรวจสอบ Supabase Database Migration'});
+    }
+
+    return send(res,201,{ok:true,email});
+  }
+
   if (p === '/api/customer/me' && m === 'GET') {
     const user=await currentUser(req,false); if(!user)return send(res,200,{authenticated:false});
     const profile=await profileFor(user.id); if(!profile||profile.role!=='customer'||profile.status!=='active')return send(res,200,{authenticated:false});
