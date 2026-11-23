@@ -328,13 +328,10 @@ async function route(req, res) {
     if(phone&&!validPhone(phone))return send(res,400,{error:'เบอร์โทรไม่ถูกต้อง'});
     if(password.length<10||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))return send(res,400,{error:'รหัสผ่านต้องอย่างน้อย 10 ตัว และมีตัวอักษรกับตัวเลข'});
 
-    // Production signup throttling. Registration fails closed when the
-    // migration/RPC is missing so the public register endpoint is never left
-    // without abuse protection.
     try {
       const ip=requestIp(req);
-      const ipKey=crypto.createHash('sha256').update(`furugi-signup-ip|${ip}`).digest('hex');
-      const emailKey=crypto.createHash('sha256').update(`furugi-signup-email|${email}`).digest('hex');
+      const ipKey=rateKey('signup-ip',ip);
+      const emailKey=rateKey('signup-email',email);
       const [ipLimit,emailLimit]=await Promise.all([
         admin.rpc('consume_customer_signup_attempt',{p_key:ipKey,p_limit:20,p_window_seconds:3600}),
         admin.rpc('consume_customer_signup_attempt',{p_key:emailKey,p_limit:5,p_window_seconds:3600})
@@ -378,8 +375,6 @@ async function route(req, res) {
     },{onConflict:'id'});
 
     if(profileErr){
-      // Do not leave an unusable Auth account behind if the profile schema
-      // has not been installed correctly.
       try { await admin.auth.admin.deleteUser(user.id); } catch {}
       console.error('customer profile create failed:',profileErr);
       return send(res,500,{error:'สร้างข้อมูลสมาชิกไม่สำเร็จ กรุณาตรวจสอบ Supabase Database Migration'});
@@ -438,7 +433,13 @@ async function route(req, res) {
   }
   if (p === '/api/contact' && m === 'POST') {
     const name=safeText(b.name,120),message=safeText(b.message,3000),email=safeText(b.email,180),phone=safeText(b.phone,40); if(!name||!message)return send(res,400,{error:'กรุณากรอกชื่อและข้อความ'}); if(!validEmail(email))return send(res,400,{error:'อีเมลไม่ถูกต้อง'});
-    const {user}=await requireCustomer(req); const {data,error}=await admin.from('contact_messages').insert({customer_id:user.id,status:'new',name,email,phone,message}).select('id').single(); if(error)throw error;
+    const {user}=await requireCustomer(req);
+    const [userAllowed,ipAllowed]=await Promise.all([
+      consumeActionLimit(rateKey('contact-user',user.id),10,3600),
+      consumeActionLimit(rateKey('contact-ip',requestIp(req)),30,3600)
+    ]);
+    if(!userAllowed||!ipAllowed)return send(res,429,{error:'ส่งข้อความถี่เกินไป กรุณาลองใหม่ภายหลัง'});
+    const {data,error}=await admin.from('contact_messages').insert({customer_id:user.id,status:'new',name,email,phone,message}).select('id').single(); if(error)throw error;
     return send(res,201,{id:Number(data.id),ok:true});
   }
   if (p === '/api/orders' && m === 'POST') {
@@ -449,16 +450,12 @@ async function route(req, res) {
     if(!validEmail(safeText(c.email,180)))return send(res,400,{error:'อีเมลไม่ถูกต้อง'});
     const {user}=await requireCustomer(req), payment=['cod','promptpay','bank'].includes(b.payment)?b.payment:'cod';
 
-    // Production order-abuse protection: throttle both the authenticated user
-    // and source IP before any stock is reserved.
     const [userAllowed, ipAllowed] = await Promise.all([
       consumeActionLimit(rateKey('order-user', user.id), 8, 600),
       consumeActionLimit(rateKey('order-ip', requestIp(req)), 30, 3600)
     ]);
     if(!userAllowed || !ipAllowed) return send(res,429,{error:'ทำรายการสั่งซื้อถี่เกินไป กรุณารอสักครู่แล้วลองใหม่'});
 
-    // A customer may have at most 2 unconfirmed COD orders at a time. This
-    // prevents free accounts from reserving the whole store with fake CODs.
     if(payment==='cod'){
       const {count,error:codErr}=await admin.from('orders').select('id',{count:'exact',head:true})
         .eq('customer_id',user.id).eq('payment_method','cod').eq('status','pending').eq('restocked',false);
@@ -478,6 +475,11 @@ async function route(req, res) {
   if (/^\/api\/orders\/[^/]+\/payment-proof$/.test(p) && m==='POST') {
     const {user}=await requireCustomer(req);
     const parts=p.split('/'),id=decodeURIComponent(parts[3]).toUpperCase(),phone=digits(b.phone),order=await fetchOrder(id); if(!order||order.customer_id!==user.id||digits(order.customer_phone)!==phone)return send(res,404,{error:'ไม่พบออเดอร์ในบัญชีนี้ หรือเบอร์โทรไม่ตรง'});
+    const [userAllowed,orderAllowed]=await Promise.all([
+      consumeActionLimit(rateKey('proof-user',user.id),12,3600),
+      consumeActionLimit(rateKey('proof-order',id),6,3600)
+    ]);
+    if(!userAllowed||!orderAllowed)return send(res,429,{error:'อัปโหลดหลักฐานการชำระเงินถี่เกินไป กรุณาลองใหม่ภายหลัง'});
     if(order.payment_method==='cod')return send(res,400,{error:'ออเดอร์ COD ไม่ต้องอัปโหลดสลิป'}); if(order.payment_status==='paid')return send(res,409,{error:'ออเดอร์นี้ยืนยันการชำระแล้ว'}); if(order.status==='cancelled')return send(res,409,{error:'ออเดอร์นี้ถูกยกเลิกแล้ว'});
     const img=parseDataImage(b.proofImage,2*1024*1024),path=`orders/${id}/${Date.now()}-${crypto.randomUUID()}.${img.ext}`;
     const {error:upErr}=await admin.storage.from('payment-slips').upload(path,img.buf,{contentType:img.contentType,upsert:false}); if(upErr)throw upErr;

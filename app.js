@@ -627,6 +627,7 @@ function initCustomerLogin() {
 
   }
 
+
   form.addEventListener("submit", async (e) => {
 
     e.preventDefault();
@@ -856,7 +857,7 @@ function initResetPassword() {
 
     const password = String(fd.get("password") || "");
 
-    if (password.length < 10) return toast("รหัสผ่านต้องอย่างน้อย 10 ตัว");
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) return toast("รหัสผ่านต้องอย่างน้อย 10 ตัว และมีตัวอักษรกับตัวเลข");
 
     const { error } = await supabaseClient.auth.updateUser({ password });
 
@@ -992,7 +993,7 @@ async function initCustomerAccount() {
 
     try {
 
-      await supabaseClient.auth.signOut();
+      await supabaseClient.auth.signOut({ scope: "local" });
 
     } catch {}
 
@@ -1843,6 +1844,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
 
   }
+
 
   // Check Supabase session before loading any customer-only page data.
 

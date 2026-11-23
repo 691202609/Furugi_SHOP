@@ -41,7 +41,6 @@ begin
     end,
     updated_at = v_now
   returning * into r;
-
   return r.attempts <= v_limit;
 end;
 $$;

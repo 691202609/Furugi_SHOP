@@ -1,5 +1,5 @@
--- Furugi SHOP v4.0 — Customer profile repair / auth trigger
--- Run this in Supabase SQL Editor if auth users exist but public.profiles is missing.
+-- Furugi SHOP v4.1 — Customer profile repair / auth trigger
+-- Safe to run on existing projects.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -44,13 +44,11 @@ begin
     full_name = case when public.profiles.full_name = '' then excluded.full_name else public.profiles.full_name end,
     phone = case when public.profiles.phone = '' then excluded.phone else public.profiles.phone end,
     updated_at = now();
-
   return new;
 end;
 $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
-
 create trigger on_auth_user_created
 after insert or update of email, raw_user_meta_data on auth.users
 for each row execute function public.handle_new_auth_user();
@@ -68,6 +66,4 @@ select
   coalesce(u.created_at, now()),
   now()
 from auth.users u
-where not exists (
-  select 1 from public.profiles p where p.id = u.id
-);
+where not exists (select 1 from public.profiles p where p.id = u.id);

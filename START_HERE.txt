@@ -1,19 +1,37 @@
-FURUGI SHOP LIVE v4.0 — SUPABASE + VERCEL
-===========================================
+FURUGI SHOP v4.1 — GO LIVE FINAL
 
-1) Create a NEW Supabase project.
-2) Run: supabase/migrations/001_furugi_v4.sql in Supabase SQL Editor.
-3) Import this project to Vercel.
-4) Add Vercel Environment Variables:
+ทำตามนี้ตามลำดับ:
+1) Supabase Database
+   - ถ้าใช้ฐานข้อมูลเดิม: เปิด RUN_THIS_IN_SUPABASE.sql > Copy ทั้งหมด > Supabase SQL Editor > Run
+   - ถ้าเป็น Supabase ใหม่: Run supabase/READY_TO_OPEN.sql แทน
+
+2) Supabase Authentication > Sign In / Providers > Email
+   - ปิด Allow new users to sign up (สำคัญ: ป้องกันการสมัครตรงข้าม Backend/Rate Limit)
+   - ระบบ Furugi สมัครผ่าน /api/customer/register ด้วย Server Admin API และสร้างบัญชี confirmed ให้เอง
+   - ลูกค้าจึงสมัคร/Login บนหน้าเว็บได้ทันที ไม่ต้องยืนยัน Gmail
+
+3) Vercel > Settings > Environment Variables ต้องมี
    SUPABASE_URL
    SUPABASE_PUBLISHABLE_KEY
    SUPABASE_SECRET_KEY
-   FURUGI_SETUP_TOKEN (long random value, temporary)
-   PUBLIC_URL
-5) Deploy / Redeploy.
-6) Open https://YOUR-DOMAIN/setup.html and create the first Admin.
-7) DELETE FURUGI_SETUP_TOKEN from Vercel and Redeploy.
-8) Configure Supabase Auth Site URL + Redirect URLs + Custom SMTP, then add real store/payment/product data in Admin.
+   FURUGI_SETUP_TOKEN  (ใช้เฉพาะสร้าง Admin คนแรก; สุ่มยาวอย่างน้อย 32 ตัว)
 
-Full Thai guide: README.md
-Pre-launch checklist: GO_LIVE_CHECKLIST.md
+4) Push ชุดนี้ขึ้น GitHub main แล้วรอ Vercel Deploy
+
+5) เปิด https://furugishop.vercel.app/api/health
+   ต้องได้ "ok": true และ checks ทุกตัวเป็น true
+
+6) เปิด /setup.html สร้าง Admin คนแรก
+   จากนั้นลบ FURUGI_SETUP_TOKEN ออกจาก Vercel แล้ว Redeploy
+
+7) Logout/Login ใหม่ 1 รอบหลังอัปเดต เพราะ Customer/Admin ใช้ Auth storage key ใหม่แยกกัน
+
+8) Smoke Test ก่อนประกาศเปิดร้าน
+   Register > Login > Profile > Shop > Product > Cart > Checkout > Order > Track
+   Admin > Products > Orders > Payments > Customers > Settings > Backup
+
+สำคัญ:
+- Register/Login ไม่ต้องยืนยัน Gmail
+- Forgot Password ยังใช้อีเมล Recovery: ก่อนเปิดจริงควรตั้ง Custom SMTP ใน Supabase
+- ห้ามอัป .env.local หรือ Secret/Setup Token จริงขึ้น GitHub
+- หลังสร้าง Admin แล้วต้องลบ FURUGI_SETUP_TOKEN

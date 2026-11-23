@@ -1,21 +1,46 @@
-FURUGI SHOP FINAL TEST RESULT
+FURUGI SHOP v4.1 — FINAL GO-LIVE VERIFICATION
+Date: 2026-11-23
 
-PASS: npm run check
-PASS: automated tests 9/9
-PASS: package.json/package-lock.json/vercel.json parse
-PASS: no duplicate HTML IDs
-PASS: no missing local HTML href/src
-PASS: no detected secret-like production keys in project files
-PASS: customer/admin auth storage isolated
-PASS: multi-tab customer session configuration
-PASS: order/IP/user throttling present
-PASS: COD pending cap present
-PASS: expired order stock release on catalog reads
-PASS: accurate customer total-spent logic
-PASS: full health RPC/API contract present
-PASS: Supabase CDN pinned
-PASS: hero WebP optimized (~203 KB)
-PASS: .vercelignore hardening
-PASS: CI workflow added
+RESULT: PASS (code/package verification)
+Automated tests: 15/15 PASS
+JavaScript syntax: PASS
+JSON config: PASS
+Internal HTML links/assets: PASS
+Duplicate IDs: PASS
+Secret scan: PASS
+.env.local/.git/.vercel/node_modules in package: NONE
 
-NOTE: Run RUN_THIS_IN_SUPABASE.sql on the existing Supabase project before expecting the new /api/health and order hardening to work.
+Verified production hardening:
+- Register/Login on website; registration uses backend admin createUser + email_confirm=true
+- No Gmail confirmation required for signup
+- Customer/Admin auth use separate persistent storage keys
+- Multi-tab customer session supported
+- Local-device scoped logout
+- Customer/Admin role checks on server
+- Order/customer ownership checks (IDOR protection)
+- Server-side price calculation + atomic stock locking
+- Signup rate limits
+- Order user/IP rate limits + max 2 pending COD orders
+- Contact rate limits
+- Payment-proof upload rate limits
+- Automatic PromptPay/Bank/COD reservation expiry and stock restock
+- Full health-check RPC contract
+- Private payment-slip storage
+- RLS/service_role-only RPCs
+- CSP/HSTS/no-store/noindex security headers
+- Exact Supabase JS 2.118.0 pin
+- Optimized hero WebP (~203 KB)
+- GitHub Actions CI + static system test suite
+- Vercel ignore excludes SQL/tests/docs/scripts/env files from public output
+
+REQUIRED BEFORE LIVE TRAFFIC:
+1. Run RUN_THIS_IN_SUPABASE.sql in the EXISTING Supabase project.
+2. Supabase Authentication > Email: disable "Allow new users to sign up" so users cannot bypass the Furugi backend signup rate limiter. Backend admin createUser still handles website registration.
+3. Verify Vercel environment variables: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY, and temporary FURUGI_SETUP_TOKEN.
+4. Deploy to Vercel and open /api/health. It must return ok:true and all checks:true.
+5. Create first Admin at /setup.html, then DELETE FURUGI_SETUP_TOKEN from Vercel and redeploy.
+6. Logout/Login once after upgrade, then run one real smoke test: Register > Profile > Shop > Cart > Checkout > Order > Track > Admin.
+7. Configure Custom SMTP in Supabase if Forgot Password must be reliable in production.
+
+NOTE:
+The package can be verified locally without production secrets. Final live database/network behavior can only be confirmed after the SQL migration and Vercel environment variables are applied to the user's real Supabase/Vercel project.
