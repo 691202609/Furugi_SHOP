@@ -521,6 +521,43 @@ function requireCustomerLogin() {
 }
 
 
+function installCustomerCrossTabSync() {
+
+  window.addEventListener("storage", (event) => {
+
+    if (event.key !== "furugi-customer-auth-v1") return;
+
+    const page = currentCustomerPage();
+
+    // If Login/Register was already open before another tab signed in,
+    // move that stale auth tab into the store immediately.
+    if (
+      event.newValue &&
+      (page === "customer-login.html" || page === "customer-register.html")
+    ) {
+
+      location.replace(safeCustomerNext() || "index.html");
+
+      return;
+
+    }
+
+    // If another tab logs out, protected storefront pages must stop using
+    // the now-invalid customer session immediately.
+    if (!event.newValue && !CUSTOMER_PUBLIC_AUTH_PAGES.has(page)) {
+
+      const next = customerReturnTarget();
+
+      location.replace(
+        `customer-login.html?next=${encodeURIComponent(next)}`,
+      );
+
+    }
+
+  });
+
+}
+
 function customerApi(url, opt = {}) {
 
   return authedApi(url, opt);
@@ -1845,6 +1882,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   }
 
+
+  installCustomerCrossTabSync();
 
   // Check Supabase session before loading any customer-only page data.
 

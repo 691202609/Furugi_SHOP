@@ -1,6 +1,6 @@
 {
   "name": "furugi-shop-v4-supabase-vercel",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "private": true,
   "description": "Furugi SHOP production cloud edition using Supabase Auth/Postgres/Storage and Vercel Functions",
   "scripts": {

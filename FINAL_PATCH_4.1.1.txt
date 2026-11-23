@@ -1,0 +1,16 @@
+Furugi SHOP v4.1.1 — FINAL PATCH
+
+Fixed:
+- Customer Login/Register tabs now synchronize auth changes across browser tabs.
+- A Login tab left open before signing in elsewhere redirects to the store automatically.
+- Protected storefront tabs return to Login when another tab logs out.
+- Contact form rate limit is active.
+- Payment-proof upload rate limit is active.
+- Obsolete ~1.9 MB furugi-hero.png removed; optimized WebP remains.
+- Regression test added for the stale multi-tab Login issue.
+
+Go-live:
+1) Run RUN_THIS_IN_SUPABASE.sql in Supabase SQL Editor.
+2) Deploy this package to Vercel.
+3) Confirm /api/health returns ok:true.
+4) Logout/Login once after deployment.

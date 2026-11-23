@@ -142,3 +142,14 @@ test('customer and admin logout are local-device scoped', () => {
   assert.match(app, /signOut\(\{\s*scope:\s*["']local["']\s*\}\)/);
   assert.match(admin, /signOut\(\{scope:'local'\}\)/);
 });
+
+test('stale Login/Register tabs follow customer auth changes across tabs', () => {
+  const app = read('app.js');
+  assert.match(app, /function installCustomerCrossTabSync\(\)/);
+  assert.match(app, /addEventListener\(["']storage["']/);
+  assert.match(app, /event\.key !== ["']furugi-customer-auth-v1["']/);
+  assert.match(app, /customer-login\.html/);
+  assert.match(app, /customer-register\.html/);
+  assert.match(app, /location\.replace\(safeCustomerNext\(\) \|\| ["']index\.html["']\)/);
+  assert.match(app, /installCustomerCrossTabSync\(\);/);
+});

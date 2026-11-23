@@ -1,0 +1,24 @@
+Furugi SHOP v4.1.1 — Final Verification
+
+npm run verify: PASS
+Tests: 16 PASS / 0 FAIL
+
+Fixes verified:
+- Cross-tab stale Login/Register sync: PASS
+- Customer/Admin isolated localStorage sessions: PASS
+- Contact rate limit: PASS
+- Payment-proof rate limit: PASS
+- Order/COD abuse protection: PASS
+- Expired stock release: PASS
+- Health RPC contract: PASS
+- Old 1.9 MB hero PNG removed: PASS
+- Optimized WebP present: PASS
+- Local links/assets: PASS
+- JavaScript syntax: PASS
+- Secret scan: PASS
+- Required core files: PASS
+- Packaging junk (.git/.vercel/node_modules): PASS
+
+Files: 67
+HTML pages: 34
+ZIP SHA-256: 9e1f98ed15bfc84ece0e8a1dc8cf06f513a425a2e06a3fa96fc2fc0a41ccae26
