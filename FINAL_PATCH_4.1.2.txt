@@ -1,0 +1,8 @@
+Furugi SHOP v4.1.2
+
+UI change:
+- Removed the top Furugi SHOP announcement bar from customer-login.html.
+- Removed the storefront navigation/header from customer-login.html.
+- Other storefront pages keep their normal header/navigation.
+- Footer remains on Login page.
+- Regression test added so the Login header does not return accidentally.

@@ -153,3 +153,10 @@ test('stale Login/Register tabs follow customer auth changes across tabs', () =>
   assert.match(app, /location\.replace\(safeCustomerNext\(\) \|\| ["']index\.html["']\)/);
   assert.match(app, /installCustomerCrossTabSync\(\);/);
 });
+
+test('customer Login page has no announcement or storefront header', () => {
+  const login = read('customer-login.html');
+  assert.doesNotMatch(login, /id=["']announcement["']/);
+  assert.doesNotMatch(login, /class=["']site-header["']/);
+  assert.match(read('index.html'), /class=["']site-header["']/);
+});
