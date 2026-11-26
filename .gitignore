@@ -3,6 +3,7 @@
 !.env.example
 .vercel
 node_modules
+.npm-cache
 .DS_Store
 
 .vercel

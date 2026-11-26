@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Stock Chart | Furugi SHOP</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .stock-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:24px 0}
+    .stock-tools .field{flex:1 1 280px}
+    .chart-frame{width:100%;height:680px;border:1px solid #302830;background:#070607}
+    .stock-note{margin-top:12px}
+  </style>
+</head>
+<body data-page="stocks">
+  <header class="site-header"><div class="container nav-row">
+    <a class="brand" href="index.html"><span class="brand-seal">古</span><span><span class="shop-name">FURUGI SHOP</span><small>SELECTED SECOND-HAND CLOTHING</small></span></a>
+    <nav><a href="shop.html">SHOP</a><a href="stocks.html" aria-current="page">STOCK CHART</a><a href="account.html">ACCOUNT</a></nav>
+  </div></header>
+  <main><section class="section"><div class="container">
+    <div class="kicker">MARKET / リアルタイム</div>
+    <h1>กราฟหุ้น</h1>
+    <p class="muted">ค้นหาหุ้นด้วยรูปแบบตลาด:สัญลักษณ์ เช่น <b>SET:PTT</b>, <b>NASDAQ:AAPL</b> หรือ <b>NYSE:TSLA</b></p>
+    <form class="stock-tools" id="stockForm">
+      <div class="field"><label for="stockSymbol">สัญลักษณ์หุ้น</label><input id="stockSymbol" value="SET:PTT" autocomplete="off" placeholder="เช่น NASDAQ:AAPL" required></div>
+      <button class="btn btn-pink" type="submit">ดูกราฟ →</button>
+    </form>
+    <iframe id="stockChart" class="chart-frame" title="Stock chart" allowtransparency="true" scrolling="no" src="https://www.tradingview.com/widgetembed/?frameElementId=stockChart&symbol=SET%3APTT&interval=D&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FBangkok"></iframe>
+    <p class="muted stock-note">ข้อมูลและความถี่อัปเดตขึ้นกับตลาดและข้อกำหนดของ TradingView บางตลาดอาจหน่วงเวลา</p>
+  </div></section></main>
+  <script>
+    const form=document.getElementById('stockForm'), input=document.getElementById('stockSymbol'), chart=document.getElementById('stockChart');
+    form.addEventListener('submit',e=>{e.preventDefault();const symbol=input.value.trim().toUpperCase();if(!/^[A-Z0-9._-]+:[A-Z0-9._-]+$/.test(symbol)){input.focus();return}chart.src='https://www.tradingview.com/widgetembed/?frameElementId=stockChart&symbol='+encodeURIComponent(symbol)+'&interval=D&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FBangkok'});
+  </script>
+</body>
+</html>
