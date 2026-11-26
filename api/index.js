@@ -276,7 +276,26 @@ async function route(req, res) {
 
   if (p === '/api/config' && m === 'GET') return send(res,200,{supabaseUrl:SUPABASE_URL,publishableKey:PUBLISHABLE_KEY});
   if (p === '/api/health' && m === 'GET') {
-    const { data, error } = await admin.rpc('furugi_system_health');
+    let { data, error } = await admin.rpc('furugi_system_health');
+    // PostgREST can briefly serve a stale schema cache after the SQL migration
+    // has been applied. Keep health useful during that window by checking the
+    // core tables directly; this also gives operators a precise degraded state.
+    if (error && /could not find the function .*furugi_system_health|schema cache/i.test(String(error.message || ''))) {
+      const checks = {};
+      const tableChecks = await Promise.all([
+        ['profiles', admin.from('profiles').select('id', { count: 'exact', head: true })],
+        ['products', admin.from('products').select('id', { count: 'exact', head: true })],
+        ['orders', admin.from('orders').select('id', { count: 'exact', head: true })],
+        ['order_items', admin.from('order_items').select('id', { count: 'exact', head: true })],
+        ['store_settings', admin.from('store_settings').select('id', { count: 'exact', head: true }).eq('id', 1)]
+      ]);
+      for (const [name, result] of tableChecks) checks[name] = !result.error;
+      const tablesOk = Object.values(checks).every(Boolean);
+      data = { ok: false, checks, degraded: true };
+      error = new Error(tablesOk
+        ? 'Supabase schema cache ยังไม่รีเฟรชสำหรับ furugi_system_health; กรุณารีโหลด schema cache'
+        : 'Supabase schema หรือ migration ยังไม่ครบ');
+    }
     const ok = !error && data?.ok === true;
     return send(res, ok ? 200 : 503, {
       ok,

@@ -610,5 +610,8 @@ begin
 end;
 $$;
 
+-- Ask PostgREST to refresh its function cache immediately after migrations.
+notify pgrst, 'reload schema';
+
 revoke all on function public.furugi_system_health() from public, anon, authenticated;
 grant execute on function public.furugi_system_health() to service_role;
